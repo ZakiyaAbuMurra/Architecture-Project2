@@ -1,19 +1,30 @@
-module PC (
-  input clk,
-  input reset,
-  input [31:0] pcIncrement,
-  output reg [31:0] pcOut
-);
-
-  always @(posedge clk or posedge reset) begin
-    if (reset) begin
-      pcOut <= 32'h0;  // Reset the PC to 0
-    end
-    else begin
-      pcOut <= pcOut + pcIncrement;  // Increment the PC by pcIncrement
-    end
-  end
-
+// Code your design here
+module RegFile(RA, RB, RW ,Bus_A, Bus_B, Bus_W, clk ,reg_write);
+	input clk,reg_write;
+	input [4:0] RA,RB,RW;
+	input [31:0] Bus_W;
+	output wire [31:0] Bus_A, Bus_B;
+	
+	integer i=0;
+	reg [31:0] register_file [31:0];	 
+	
+		initial	begin
+			for(i=0;i<32; i=i+1)
+				register_file[i]=0;	
+		end
+					
+	always @(posedge clk) begin
+	  if (reg_write) begin
+	    register_file[RW] <= Bus_W;
+	  end
+      
+//         foreach(register_file[i])begin 
+//           $display(" %t , index[%0h] = %0h" ,$time , i , register_file[i] );
+//       end  
+	end	   
+	
+	 assign Bus_A =  register_file[RA];
+     assign Bus_B =  register_file[RB];
+	 
+	
 endmodule
-
-*/
