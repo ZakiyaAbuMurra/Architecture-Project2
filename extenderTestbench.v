@@ -1,4 +1,4 @@
-module tb(); 
+module extender_tb(); 
     reg [23:0] in;
     reg signop;
     wire [31:0] out;

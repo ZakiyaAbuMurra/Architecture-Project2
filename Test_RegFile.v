@@ -1,6 +1,6 @@
 // Code your testbench here
 // or browse Examples
-module tb(); 
+module rf_tb(); 
   // input = reg 
   // output = wire 
   reg clk , reg_write ; 

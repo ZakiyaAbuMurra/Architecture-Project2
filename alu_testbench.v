@@ -1,6 +1,6 @@
 // Code your testbench here
 // or browse Examples
-module tb() ; 
+module alu_tb() ; 
     // input = reg 
     // output = wire 
      reg [31:0]A ; 
@@ -17,7 +17,8 @@ module tb() ;
              .result(result), 
              .carry(carry), 
              .zero(zero), 
-             .overflow(overflow)
+             .overflow(overflow),
+			 .negative(negative)
             );
      
      initial begin 
