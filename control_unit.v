@@ -107,7 +107,6 @@ module ControlUnit(inst_type, inst_function, stop_bit, zero_flag,
 			end
 			
 			7'b00000??: begin // R-type/CMP	
-              $display("%0b ------------" ,{inst_type, inst_function});
 				RS2src <= 0;  
 				MemR <= 0;
 				MemW <= 0;
