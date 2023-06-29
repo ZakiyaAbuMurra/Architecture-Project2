@@ -1,7 +1,7 @@
 module mux4x1 (	  
     input wire [1:0] sel,
       input wire [31:0] a,
-      input wire [32:0] b,
+      input wire [31:0] b,
       input wire [31:0] c,
       output reg [31:0] out
     );
