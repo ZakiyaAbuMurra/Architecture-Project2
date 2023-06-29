@@ -1,15 +1,17 @@
-module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
+// Code your design here
+module ControlUnit(inst_type, inst_function, stop_bit, zero_flag,
 	ExSrc, ExS, RS2src, WB, MemR, MemW, WBdata,
-	PCsrc, PCaddSrc1, PCaddSrc2,
+	 PCaddSrc1, PCaddSrc2,
 	ALUsrc, ALUop,
-	StR, StW,
+	StR, StW,PCsrc, 
 	state, next_state);
 	
 	input [1:0] inst_type;
 	input [4:0] inst_function;
 	input stop_bit, zero_flag; 
 	input [2:0] state;
-	output reg ExSrc, ExS, RS2src, WB, MemR, MemW, WBdata, PCsrc, PCaddSrc1, PCaddSrc2, ALUsrc, StR, StW;
+	output reg ExSrc, ExS, RS2src, WB, MemR, MemW, WBdata, PCaddSrc1, PCaddSrc2, ALUsrc, StR, StW;
+    output reg [1:0] PCsrc ; 
 	output reg [3:0] ALUop; // 4 bit:: TODO: change
 	output reg [2:0] next_state;
 	
@@ -81,6 +83,7 @@ module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
 			ST_STAGE: begin
 				next_state = IF_STAGE;
 			end
+          
 		endcase
 		
 		if(state!=ST_STAGE && next_state == IF_STAGE && stop_bit == 1) begin
@@ -93,22 +96,24 @@ module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
 	
 	
 	// main control signals
-	always@ (inst_type, inst_function, state) begin
-		case({inst_type, inst_function})
+  always@ (inst_type, inst_function, state) begin
+   
+		casex({inst_type, inst_function})
 			7'b0000011: begin // R-type: CMP 
 				RS2src <= 0;  
 				MemR <= 0;
 				MemW <= 0;
-				WB<=0;
+				WB <=0;
 			end
 			
-			7'b00000xx: begin // R-type/CMP	
+			7'b00000??: begin // R-type/CMP	
+              $display("%0b ------------" ,{inst_type, inst_function});
 				RS2src <= 0;  
 				MemR <= 0;
 				MemW <= 0;
 				WBdata <= 0;
 				if(next_state == 4) begin
-					WB = 1;
+					WB <= 1;
 				end		
 			end
 			
@@ -120,7 +125,7 @@ module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
 				MemW <= 0;
 				WBdata <= 0;
 				if(next_state == 4) begin
-					WB = 1;
+					WB <= 1;
 				end	
 			end
 			
@@ -132,7 +137,7 @@ module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
 				MemW <= 0;
 				WBdata <= 1;
 				if(next_state == 4) begin
-					WB = 1;
+					WB <= 1;
 				end	
 			end
 			
@@ -182,18 +187,20 @@ module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
 					WB = 1;
 				end	
 			end	
-		endcase	
+		endcase
 	end	
 	
 	
 	// PC control
-	always @(inst_type, inst_function, stop_bit, zero_flag, state) begin
+  always @(inst_type, inst_function, stop_bit, zero_flag, state , next_state) begin
 		if(next_state == IF_STAGE) begin
 			if (inst_type == R_TYPE || inst_type == S_TYPE)begin 
-				if(stop_bit ==1)
+              if(stop_bit ==1) begin 
 					PCsrc <= 0;
-				else
+              end 
+				else begin
 					PCsrc <= 2;
+                end 
 			end
 			else if(inst_type==I_TYPE) begin 
 				if(stop_bit == 1)
@@ -224,8 +231,9 @@ module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
 			end
 				
 		end
-	end
-	
+    end 
+  
+    // ALU control signal 	
 	always @(inst_type, inst_function) begin
 		case({inst_type, inst_function})
 			7'b0000000: begin // AND
@@ -287,7 +295,9 @@ module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
 		
 	end
 	
+  // Stack control unit 
 	always@(inst_type, inst_function, stop_bit, state) begin
+      if (next_state == ST_STAGE)begin 
 		if(inst_type == J_TYPE)begin
 			if(inst_function == 5'b00000) begin
 				if(stop_bit ==1) begin
@@ -313,7 +323,7 @@ module ControlUnti(inst_type, inst_function, stop_bit, zero_flag,
 			StR <= 1;
 			StW <= 0;
 		end
-		
+      end	
 	end
 	
 	

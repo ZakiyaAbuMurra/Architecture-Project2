@@ -2,7 +2,7 @@ module ALU (
     input logic [31:0] A,
     input logic [31:0] B,
     input logic [2:0]opcode , // 3 bit opcode
-      :output logic [31:0]result ,
+      output logic [31:0]result ,
       output logic carry,
       output logic zero,
       output logic negative,
