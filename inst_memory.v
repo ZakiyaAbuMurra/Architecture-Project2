@@ -1,6 +1,6 @@
 // Code your design here
 module InstMem(address, Dout, Din, memW);  
-	input memW;
+	input wire memW = 0;
 	input [31:0] address, Din;
 	output wire [31:0] Dout;	 
 	

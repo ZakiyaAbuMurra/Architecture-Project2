@@ -12,7 +12,7 @@ module ControlUnit(inst_type, inst_function, stop_bit, zero_flag,
 	input [2:0] state;
 	output reg ExSrc, ExS, RS2src, WB, MemR, MemW, WBdata, PCaddSrc1, PCaddSrc2, ALUsrc, StR, StW;
     output reg [1:0] PCsrc ; 
-	output reg [3:0] ALUop; // 4 bit:: TODO: change
+	output reg [2:0] ALUop; 
 	output reg [2:0] next_state;
 	
 	parameter IF_STAGE = 0;
@@ -27,13 +27,12 @@ module ControlUnit(inst_type, inst_function, stop_bit, zero_flag,
 	parameter J_TYPE = 2'b01;
 	parameter S_TYPE = 2'b11;
 	
+	//return here 
 	parameter ADD = 0;
 	parameter SUB = 1;
 	parameter AND = 2;
-	parameter OR = 3;
-	parameter XOR = 4;
-	parameter SLL = 5;
-	parameter SLR = 6;
+	parameter SLL = 3;
+	parameter SLR = 4;
 
 	
 	

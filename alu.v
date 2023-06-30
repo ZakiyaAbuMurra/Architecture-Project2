@@ -34,11 +34,11 @@ module ALU (
   
              
   
-              3'b101: begin // SLL
+              3'b011: begin // SLL
                   result = A << B[4:0];
               end
   
-              3'b110: begin // SRL
+              3'b100: begin // SRL
                   result = A >> B[4:0];
               end
   
