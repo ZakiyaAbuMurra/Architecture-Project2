@@ -1,0 +1,7 @@
+//`include "InstMem_tb.v"
+// `include "DataMem_tb.v"
+// `include "RegFile_tb.v"
+// `include "Extender_tb.v"
+// `include "alu_tb.v"
+// `include "stack-tb.v"
+`include "CPU.v"

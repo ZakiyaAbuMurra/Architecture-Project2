@@ -1,104 +1,231 @@
-module CPU(clk, inst_Din);
-	input clk;
-	input [31:0] inst_Din;
-	
-	reg [31:0] stack_pc, JumpBranch_pc, next_pc;
-	wire [31:0] pc_value; 
-	wire [1:0] inst_type ; 
-	wire [1:0] [4:0] inst_function; 
-	wire stop_bit ; 
-	reg ExS, RS2src, WB, MemR, MemW, WBdata, PCaddSrc1, PCaddSrc2, ALUsrc, StR, StW;  
-	reg [2-1:0] ExSrc ; 
-	reg [1:0] PCsrc ; 
-	reg [2:0] ALUop; 
-	
-	reg [2:0] next_state ;
-	reg [2:0] state = 0 ; 
-	
-	// instruction memory wires 
-	wire inst_mem_output ; 
-	
-	
-	//IR wires 
-	wire [5-1:0] RS1 ; 
-	wire [5-1:0] RS2 ;	 
-	wire [5-1:0] RD  ; 
-	wire [5-1:0] inst_function_w ; 
-	wire [2-1:0] inst_type_w ; 
-	wire [14-1:0] imm14_w ; 
-	wire [24-1:0] imm24_w ; 
-	wire [5-1:0] inst_SA_w; 
+module cpu( 
+  input clk ,
+  input [31:0] inst_Din
+); 
+  
+  	
+	parameter IF_STAGE = 'b000;
+	parameter ID_STAGE = 'b001;
+	parameter EX_STAGE = 'b010;
+	parameter MEM_STAGE ='b011;
+	parameter WB_STAGE = 'b100;
+	parameter ST_STAGE = 'b101;
+  
+  	
+	parameter R_TYPE = 2'b00;
+	parameter I_TYPE = 2'b10;
+	parameter J_TYPE = 2'b01;
+	parameter S_TYPE = 2'b11 ;
+  
+  
+  reg [32-1:0] pc_next_out , pc_next_in ;
+  reg [32-1:0] pc_BTA_J_out , pc_BTA_J_in; 
+  reg [32-1:0] pc_stack_in , pc_stack_out ; 
+  reg [2-1:0] PCsrc; 
+  reg [32-1:0]pc_in , pc_out; 
+  
+  
+  reg PCaddSrc1 , PCaddSrc2 ;  
+  reg [32-1:0] unnamed1 , unnamed2 ; 
+  
+  reg [32-1:0] ext_reg_in , ext_reg_out ; 
+  reg [32-1:0] inst_mem_out;
 
-	//RF wires 
-	reg [32-1:0] S1Bus ; 
-	reg [32-1:0] S2Bus ; 
-	wire [32-1:0] WBus  ; 	
-	
-	//extender wires 
-	wire [32-1:0] mux_ext_out; 
-	reg [32-1:0] ext_out ; 
-	
-	//ALU wires 
-	wire [32-1:0] A , B ;  
-	reg carry , zero , negative , overflow ; 
-	reg [32-1:0] alu_result ;  
-	
-	//Data memory wires and registers 	 
-	reg [32-1:0] data_memory_out ; 
-	  
-	wire mux_pc_out;
-	//stack 
-	reg [32-1:0] data_stack_out; 
-	wire [32-1:0] target_source_1;
-	wire [32-1:0] target_source_2;	
-	
-	always @(pc_value) begin 
-		next_pc = pc_value + 4 ;  
-	end	
-	
-    always @(target_source_1 , target_source_2) begin 
-		JumpBranch_pc = target_source_1 + target_source_2;	   
-	end	 
-	
-	
-	always @(posedge clk)begin 
-		
-		state <= next_state;
-	 
-	end	
-	
-	ControlUnit cont_unit(.inst_type(inst_type), .inst_function(inst_function), .stop_bit(stop_bit), .zero_flag(zero),
-	.ExSrc(ExSrc), .ExS(ExS), .RS2src(RS2src), .WB(WB), .MemR(MemR), .MemW(MemW), .WBdata(WBdata),
-	.PCaddSrc1(PCaddSrc1), .PCaddSrc2(PCaddSrc2),.ALUsrc(ALUsrc), .ALUop(ALUop),.StR(StR), .StW(StW),.PCsrc(PCsrc),.state(state), .next_state(next_state));
-	
-	mux4x1 mux_pc (.sel(PCsrc), .a(stack_pc), .b(JumpBranch_pc) , .c(next_pc) , .out(pc_value));
+  reg StR, StW;
+  
+  reg [5-1:0] inst_function ; 
+  reg [5-1:0] inst_rs1 , inst_rs2 , inst_rd ;
+  reg [2-1:0] inst_type ; 
+  reg [5-1:0] inst_SA ;
+  reg [14-1:0] imm_14 ; 
+  reg [24-1:0] imm_24 ; 
+  reg stop_bit ; 
+  reg [2-1:0] EXsrc ;
+  reg[32-1:0] ext_in;
+  reg EXs;
+  
+  reg [5-1:0] mux_src_rf_out;
+  reg RS2src;
+  
+  reg [32-1:0] S1Bus_in, S1Bus_out;
+  reg [32-1:0] S2Bus_in, S2Bus_out;
+  reg [32-1:0] WBUS;
+  reg WB_en;
+  
+  reg [32-1:0] ALU_res_in, ALU_res_out;
+  reg [32-1:0] D_mem_reg_in, D_mem_reg_out;
+  reg [4-1:0] ALU_flags_in, ALU_flags_out; // 0:carry  1:zero  2:negative  3:overflow
+  
+  reg WBdata;
+  
+  reg [32-1:0] mux_src_ALU_out;
+  
+  reg ALUsrc;
+  
+  reg [3-1:0] ALUop;
+  
+  reg memR, memW;
+  
+  reg [3-1:0] state =0, next_state=0;
+  
+//   initial begin
+//     state <= 0;
+//     next_state <= 0 ; 
+//   end 
+  int i =0; 
+  always @(negedge clk)begin 
+    if (i <1 )begin 
+      i  ++ ; 
+//      state <=0; 
+   end 
+   else begin 
+       state <=  next_state ;
+   end 
+    // $display("State = %0d , next_state = %0d " , state , next_state);
+ end 
+  
+  always @(*)begin
+      case (state)
+        IF_STAGE: begin
+            // Define FETCH behavior here...
+            next_state = ID_STAGE;
+        end
+        
+        ID_STAGE: begin
+          		if(inst_type == J_TYPE && inst_function==0)begin // J
+					next_state = IF_STAGE;
+				end
+				else if(inst_type == J_TYPE && inst_function==1) begin // Jal
+					next_state = ST_STAGE;
+				end
+				else begin 
+					next_state = EX_STAGE;
+
+				end	
+         
+        end
+        EX_STAGE: begin
+          if (inst_type == R_TYPE || inst_type == S_TYPE) begin
+					if(inst_type == R_TYPE && inst_function == 5'b00011) // CMP
+						next_state = IF_STAGE;
+					else 
+						next_state = WB_STAGE;
+				end
+              else if (inst_type == I_TYPE) begin
+                if(inst_function == 5'b00001 ||(inst_function == 5'b00000)) begin // ANDI + ADDI
+						next_state = WB_STAGE;
+                end 
+                else if ((inst_function == 5'b00011) || (inst_function == 5'b00010)) // LW + SW
+						next_state=MEM_STAGE;
+					else if (inst_function == 5'b00100) // BEQ
+						next_state = IF_STAGE;
+				end
+        
+        end
+        WB_STAGE: begin
+            next_state =IF_STAGE;
+        end
+        MEM_STAGE : begin 
+          if(inst_type == I_TYPE && inst_function == 5'b00010) // LW
+					next_state = WB_STAGE;
+				else // SW
+					next_state = IF_STAGE;
+       
+        end 
+        ST_STAGE: begin 
+           next_state = IF_STAGE ; 
+        end 
+        default: begin
+            next_state = IF_STAGE;
+        end
+    endcase
     
-	stack Stack(.data_in(next_pc),.data_out(stack_pc), .write_en(StW), .read_en(StR), .clk(clk)); 	  
-	
-	InstMem inst_mem( .address(pc_value) , .Dout(inst_mem_output) );
-	// IR unit
-	IR IR_inst (.inst(inst_mem_output) , .inst_function(inst_function_w) , .inst_rs1(RS1) , .inst_rs2(RS2), .inst_rd(RD), .inst_type(inst_type_w) , .inst_SA(inst_SA_w) 
-	            ,.imm_14(imm_14_w) , .imm_24(imm_24_w) , .stop_bit(stop_bit) );
-	 //Regsiter file 		 
-	 RegFile regfile(.clk(clk) , .reg_write(WB), .RA(RS1), .RB(RS2), .RW(RD), .Bus_W(WBus), .Bus_A(S1Bus) , .Bus_B(S2Bus));
-	 
-	 // mux 2X1 with 32 bit 
-	 mux_2x1  #(32) mux_RF_src(.data0(RS2) , .data1(RD) , .sel(RS2src) , .out(inst_mem_output));	
-	 
-	 mux4X1 mux_ext(.sel(ExSrc) , .a(inst_SA_w) , .b(imm14_w ) , .c(imm24_w), .out(mux_ext_out)); 
-	 
-	 sign_extender s_extender (.in(mux_ext_out) , .signop(ExS) , .EXsrc(ExSrc) , .out(ext_out));	
-	 
-	 mux_2x1  #(32) mux_alu(.data0(S2Bus) , .data1(ext_out) , .sel(ALUsrc) , .out(B));
-	 
-	 ALU alu(.A(S1Bus) , .B(B) , .opcode(ALUop) , .result(alu_result) , .carry(carry) ,.zero(zero) , .negative(negative) ,.overflow(overflow));
-	 
-	 DataMem data_mem (.address(alu_result) , .Din(S2Bus) , .Dout(data_memory_out) ,.memR(MemR) , .memW(MemW) , .clk(clk)); 
-	 
-	 mux_2x1  #(32) mux_RF_wb(.data0(alu_result) , .data1(data_memory_out) , .sel(WBdata) , .out(WBus));  
-	 
-	 mux_2x1  #(32) mux_pc_2(.data0(ext_out) , .data1(ext_out<<2) , .sel(PCaddSrc2) , .out(target_source_1));
-	 
-	 mux_2x1  #(32) mux_pc_1(.data0(pc_value) , .data1(next_pc) , .sel(PCaddSrc1) , .out(target_source_2));	   
-	 	
-endmodule
+    if(state!=ST_STAGE && next_state == IF_STAGE && stop_bit == 1) begin
+		next_state = ST_STAGE;
+	end
+	else if(next_state== IF_STAGE) begin
+		next_state = IF_STAGE;
+	end
+        
+  end  
+
+  
+  ControlUnit CU(.clk(clk),
+                 .inst_type(inst_type),
+                 .inst_function(inst_function), 
+                 .stop_bit(stop_bit),
+                 .zero_flag(ALU_flags_out[1]),
+                 .ExSrc(EXsrc),
+                 .ExS(EXs),
+                 .RS2src(RS2src), 
+                 .WB(WB_en), 
+                 .MemR(memR),
+                 .MemW(memW), 
+                 .WBdata(WBdata),
+                 .PCaddSrc1(PCaddSrc1),
+                 .PCaddSrc2(PCaddSrc2),
+                 .ALUsrc(ALUsrc), 
+                 .ALUop(ALUop),
+                 .StR(StR), 
+                 .StW(StW),
+                 .PCsrc(PCsrc), 
+                 .state(state),
+                 .next_state(next_state));
+  
+  
+  
+  
+  dff #(32)reg_next_pc (.Din_f(pc_next_in) , .clk(clk) , .Dout_f(pc_next_out));
+  dff #(32)reg_BTA_J(.Din_f(pc_BTA_J_in) , .clk(clk) , .Dout_f(pc_BTA_J_out) );
+  dff #(32)reg_stack_pc (.Din_f(pc_stack_in) , .clk(clk),.Dout_f(pc_stack_out));
+  
+  mux4x1 mux_pc (.sel(PCsrc), .a(pc_stack_out) , .b(pc_BTA_J_out) , .c(pc_next_out) ,.out(pc_in)) ;
+  pc pc_u (.clk(clk) , .pc_out(pc_out) ,.pc_in(pc_in) ,.state(state) );
+  
+  adder add_pc_next(.in1(pc_out) , .in2(4) , .out(pc_next_in)); 
+  
+  mux_2x1 mux_BTA_J_1 (.data0(pc_out) , .data1(pc_next_out) , .out(unnamed1) , .sel(PCaddSrc1));
+  mux_2x1 mux_BTA_J_2 (.data0(ext_reg_out) , .data1(ext_reg_out << 2 ) , .out(unnamed2) , .sel(PCaddSrc2));
+  
+  adder add_pc_BTA_J (.in1(unnamed1) , .in2(unnamed2) , .out(pc_BTA_J_in));
+  
+  stack stack_u(.data_in(pc_next_out), .data_out(pc_stack_in), .write_en(StW), .read_en(StR), .clk(clk));
+  
+  
+  InstMem inst_mem(.memW(0), .Dout(inst_mem_out), .address(pc_out));
+  
+  IR (.clk(clk) , .inst(inst_mem_out) ,  .inst_function(inst_function) , .inst_rs1(inst_rs1) , .inst_rs2(inst_rs2) , .inst_rd(inst_rd) , .inst_type(inst_type) , .stop_bit(stop_bit) , .imm_14(imm_14) , .imm_24(imm_24) , .inst_SA(inst_SA));
+  
+  mux4x1 mux_ext (.sel(EXsrc), .a(inst_SA) , .b(imm_14) , .c(imm_24) ,.out(ext_in)) ;
+  
+  sign_extender extender(.in(ext_in), .signop(EXs), .EXsrc(EXsrc), .out(ext_reg_in));
+  
+  mux_2x1#(5) mux_src_rf (.data0(inst_rs2) , .data1(inst_rd) , .out(mux_src_rf_out) , .sel(RS2src));
+  
+  RegFile RF(.RA(inst_rs1), .RB(mux_src_rf_out), .RW(inst_rd), .Bus_A(S1Bus_in), .Bus_B(S2Bus_in), .Bus_W(WBUS), .clk(clk), .reg_write(WB_en));
+
+    
+  dff #(32)reg_S1Bus(.Din_f(S1Bus_in) , .clk(clk) , .Dout_f(S1Bus_out));
+  dff #(32)reg_S2Bus(.Din_f(S2Bus_in) , .clk(clk) , .Dout_f(S2Bus_out));
+  
+  mux_2x1  mux_rf_wb(.data0(ALU_res_out) , .data1(D_mem_reg_out) , .out(WBUS) , .sel(WBdata));
+
+  mux_2x1  mux_src_ALU(.data0(S2Bus_out) , .data1(ext_reg_out) , .out(mux_src_ALU_out) , .sel(ALUsrc));
+  
+  ALU ALU_u(.A(S1Bus_out), .B(mux_src_ALU_out), .opcode(ALUop), .result(ALU_res_in), .carry(ALU_flags_in[0]), .zero(ALU_flags_in[1]), .negative(ALU_flags_in[2]), .overflow(ALU_flags_in[3]));
+
+  
+  DataMem data_mem(.address(ALU_res_out), .Din(S2Bus_out), .Dout(D_mem_reg_in), .memR(memR), .memW(memW), .clk(clk));
+  
+  
+  
+  dff #(32)reg_extend(.Din_f(ext_reg_in) , .clk(clk) , .Dout_f(ext_reg_out));
+
+  dff #(4)reg_AluFlag (.Din_f(ALU_flags_in), .clk(clk) , .Dout_f(ALU_flags_out) );
+  dff #(32)reg_AluResult(.Din_f(ALU_res_in), .clk(clk), .Dout_f(ALU_res_out) );
+  
+  
+  dff #(32)reg_DataMem(.Din_f(D_mem_reg_in), .clk(clk) , .Dout_f(D_mem_reg_out)) ;  
+  
+  
+endmodule 
